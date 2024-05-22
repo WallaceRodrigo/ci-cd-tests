@@ -1,0 +1,60 @@
+name: .NET
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: Crawlers.JobNaGringa
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 7.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Run integration test
+        working-directory: Crawlers/Crawlers.IntegrationTests
+        run: dotnet test --no-build --verbosity normal
+
+      - name: Run unit Tests
+        working-directory: Crawlers/Crawlers.UnitTests
+        run: dotnet test --no-build --verbosity normal
+        
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Google Cloud SDK
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Build Docker image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/crawlers.jobnagringa:v1 .
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/crawlers.jobnagringa:v1
+
+      - name: Update Kubernetes Deployment
+        run: |
+          gcloud container clusters get-credentials autopilot-cluster-1 --zone=us-central1 --project=${{ secrets.GCP_PROJECT_ID }}
+          kubectl set image deployment/crawlers-jobnagringa-deployment crawlers-jobnagringa=gcr.io/${{ secrets.GCP_PROJECT_ID }}/crawlers.jobnagringa:v1

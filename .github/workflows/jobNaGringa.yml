@@ -53,6 +53,10 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           install_components: 'kubectl'
 
+      - name: Configure Docker to use gcloud as a credential helper
+        run: |
+          gcloud auth configure-docker
+
       - name: Build Docker image
         run: |
           docker build -f Crawlers.JobNaGringa/Dockerfile -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/crawlers.jobnagringa:v1 .

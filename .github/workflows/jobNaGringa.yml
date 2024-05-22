@@ -2,7 +2,7 @@ name: .NET
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 jobs:
   tests:
@@ -42,16 +42,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Set up Google Cloud SDK
-        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
+          install_components: 'kubectl'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: 'kubectl'
 
       - name: Build Docker image
         run: |
-          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/crawlers.jobnagringa:v1 .
+          docker build -f Crawlers.JobNaGringa/Dockerfile -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/crawlers.jobnagringa:v1 .
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/crawlers.jobnagringa:v1
 
       - name: Update Kubernetes Deployment
